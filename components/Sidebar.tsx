@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import {
   Play, Plus, FileText, Users, Clock, Shield,
   Monitor, Bell, User, CreditCard, Mail,
-  HelpCircle, LogOut, ChevronRight,
+  HelpCircle, LogOut, ChevronRight, FolderOpen, Folder,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   activeNav?: string;
   onNewScan?: () => void;
+  dirName?: string;
+  onPickFolder?: () => void;
 }
 
 const TOP_NAV = [
@@ -29,7 +31,7 @@ const BOTTOM_NAV = [
   { id: "faq",           Icon: HelpCircle,  label: "FAQ" },
 ];
 
-export default function Sidebar({ activeNav = "reports", onNewScan }: SidebarProps) {
+export default function Sidebar({ activeNav = "reports", onNewScan, dirName, onPickFolder }: SidebarProps) {
   const router  = useRouter();
   const [active, setActive] = useState(activeNav);
 
@@ -110,6 +112,49 @@ export default function Sidebar({ activeNav = "reports", onNewScan }: SidebarPro
           <Monitor size={15} className="flex-shrink-0" />
           <span className="flex-1 truncate">Windows 10 64 bit</span>
         </div>
+
+        {/* Divider */}
+        <div className="mx-1 my-2" style={{ height: "1px", background: "#1A3050" }} />
+
+        {/* ── Save Destination Folder ── */}
+        <p className="px-3 text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "#3A5A7A" }}>
+          Save destination
+        </p>
+
+        {dirName ? (
+          /* Folder selected */
+          <button
+            onClick={onPickFolder}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-all duration-150 hover:brightness-110"
+            style={{ background: "#1E4D8C" }}
+          >
+            <div className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0">
+              <Folder size={13} className="text-white" />
+            </div>
+            <span className="flex-1 text-white text-xs font-medium truncate">{dirName}</span>
+            <ChevronRight size={12} className="opacity-50 flex-shrink-0 text-white" />
+          </button>
+        ) : (
+          /* No folder yet */
+          <button
+            onClick={onPickFolder}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left border-2 border-dashed transition-all duration-150"
+            style={{ borderColor: "#1A3050", color: "#7A9CB8" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "rgba(21,101,192,0.5)";
+              e.currentTarget.style.color = "#42A5F5";
+              e.currentTarget.style.background = "rgba(21,101,192,0.07)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "#1A3050";
+              e.currentTarget.style.color = "#7A9CB8";
+              e.currentTarget.style.background = "";
+            }}
+          >
+            <FolderOpen size={14} className="flex-shrink-0" />
+            <span className="text-xs">Pick a folder…</span>
+          </button>
+        )}
       </nav>
 
       {/* Separator */}
