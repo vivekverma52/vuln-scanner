@@ -2,26 +2,16 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "VulnScan — Vulnerability Analysis Platform",
-  description: "AI-powered vulnerability detection and analysis",
+  title: "VulnScan — Interactive Vulnerability Analysis",
+  description: "AI-powered vulnerability detection and analysis platform",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <head>
-        {/* Restore saved theme before first paint to avoid flash */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})()`,
-          }}
-        />
-      </head>
-      <body className="min-h-screen grid-bg antialiased">
+    <html lang="en" className="dark">
+      <body className="min-h-screen antialiased" style={{ background: "#071B2D" }}>
         {children}
       </body>
     </html>
