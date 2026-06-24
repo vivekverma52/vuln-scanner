@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Upload, Link2, Globe, CheckCircle2, AlertTriangle,
   FileText, FileCode, Package, X, HardDriveUpload,
@@ -168,32 +168,96 @@ function UploadedFilesPanel({ files, uploadDir, onClear }: { files: SavedFile[];
   );
 }
 
+// ── IndexedDB helpers — persist the chosen folder across sessions ─────────────
+const DB_NAME = "vuln-scanner";
+const STORE   = "handles";
+const KEY     = "scanDir";
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+async function saveHandle(h: FileSystemDirectoryHandle) {
+  const db = await openDB();
+  return new Promise<void>((resolve, reject) => {
+    const tx  = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).put(h, KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
+async function loadHandle(): Promise<FileSystemDirectoryHandle | null> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx  = db.transaction(STORE, "readonly");
+      const req = tx.objectStore(STORE).get(KEY);
+      req.onsuccess = () => resolve((req.result as FileSystemDirectoryHandle) ?? null);
+      req.onerror   = () => resolve(null);
+    });
+  } catch { return null; }
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState("");
   const [savedFiles,   setSavedFiles]   = useState<SavedFile[]>([]);
-  const [uploadDir,    setUploadDir]    = useState("");
+  const [dirHandle,    setDirHandle]    = useState<FileSystemDirectoryHandle | null>(null);
+  const [uploadDir,    setUploadDir]    = useState("C:\\scan");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [showNewScan,  setShowNewScan]  = useState(false);
   const [scanResult,   setScanResult]   = useState<ScanResult | null>(null);
   const inputRef   = useRef<HTMLInputElement>(null);
   const counterRef = useRef(0);
 
-  const saveFilesToFolder = useCallback(async (files: File[]) => {
+  // On mount: restore previously saved folder handle from IndexedDB
+  useEffect(() => {
+    loadHandle().then(async (h) => {
+      if (!h) return;
+      try {
+        const perm = await (h as any).requestPermission({ mode: "readwrite" });
+        if (perm === "granted") {
+          setDirHandle(h);
+          setUploadDir(h.name);
+        }
+      } catch { /* permission denied or API unavailable */ }
+    });
+  }, []);
+
+  // Ask user to select their local C:\scan folder (one-time, then remembered)
+  const pickFolder = async (): Promise<FileSystemDirectoryHandle | null> => {
+    try {
+      const h = await (window as any).showDirectoryPicker({ mode: "readwrite" });
+      setDirHandle(h);
+      setUploadDir(h.name);
+      await saveHandle(h);   // persist so next visit needs no picker
+      return h;
+    } catch (e: any) {
+      if (e.name !== "AbortError") setError("Could not open folder: " + e.message);
+      return null;
+    }
+  };
+
+  const saveFilesToFolder = useCallback(async (files: File[], handle: FileSystemDirectoryHandle) => {
     setSaving(true);
     setError("");
     for (const file of files) {
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/upload", { method: "POST", body: formData });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Upload failed");
-        if (data.uploadDir) setUploadDir(data.uploadDir);
+        const safeName = file.name.replace(/[^a-zA-Z0-9._\-]/g, "_");
+        const fh       = await handle.getFileHandle(safeName, { create: true });
+        const writable = await (fh as any).createWritable();
+        await writable.write(file);
+        await writable.close();
         setSavedFiles((prev) => [{
-          id: ++counterRef.current, name: data.originalName, size: file.size,
-          savedAt: new Date().toLocaleTimeString(), savedPath: data.savedPath,
+          id: ++counterRef.current, name: safeName, size: file.size,
+          savedAt: new Date().toLocaleTimeString(), savedPath: handle.name + "\\" + safeName,
         }, ...prev]);
       } catch (e: any) {
         setError(`Failed to save "${file.name}": ${e.message}`);
@@ -202,8 +266,13 @@ export default function HomePage() {
     setSaving(false);
   }, []);
 
-  // "Submit File" card clicked
-  const handleSubmitFile = () => {
+  // "Submit File" clicked — pick folder once, then reuse forever
+  const handleSubmitFile = async () => {
+    let h = dirHandle;
+    if (!h) {
+      h = await pickFolder();
+      if (!h) return;
+    }
     inputRef.current?.click();
   };
 
@@ -238,7 +307,7 @@ export default function HomePage() {
           <ConfirmModal
             files={pendingFiles}
             dirName={uploadDir || "Server storage"}
-            onConfirm={async () => { const f = pendingFiles; setPendingFiles([]); await saveFilesToFolder(f); }}
+            onConfirm={async () => { const f = pendingFiles; setPendingFiles([]); if (dirHandle) await saveFilesToFolder(f, dirHandle); }}
             onCancel={() => setPendingFiles([])}
           />
         )}
