@@ -3,12 +3,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
 
-// ─── Configure your target folder here ───────────────────────────────────────
-// On Windows: e.g. "C:\\VulnScanner\\uploads"  or use env var UPLOAD_DIR
-// On Linux/Mac dev: defaults to ./uploads in project root
-const UPLOAD_DIR =
-  process.env.UPLOAD_DIR ||
-  path.join(process.cwd(), "uploads");
+const UPLOAD_DIR = "C:\\scan";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {

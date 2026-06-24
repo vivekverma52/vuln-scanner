@@ -104,60 +104,74 @@ function ConfirmModal({ files, dirName, onConfirm, onCancel }: {
   );
 }
 
-// ── Saved files drawer (shown at bottom-right corner) ─────────────────────────
-function SavedBadge({ files, onClear }: { files: SavedFile[]; onClear: () => void }) {
-  const [open, setOpen] = useState(false);
+// ── Uploaded Files Panel ──────────────────────────────────────────────────────
+function UploadedFilesPanel({ files, onClear }: { files: SavedFile[]; onClear: () => void }) {
   if (files.length === 0) return null;
+  const latest = files[0];
+  const rest   = files.slice(1);
   return (
-    <div className="fixed bottom-6 right-6 z-40">
-      {open && (
-        <div className="mb-3 w-80 rounded-2xl overflow-hidden shadow-2xl"
-          style={{ background: "#0E2337", border: "1px solid #1A3050" }}>
-          <div className="flex items-center justify-between px-4 py-3"
-            style={{ borderBottom: "1px solid #1A3050" }}>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 size={13} className="text-emerald-400" />
-              <span className="text-sm font-semibold text-white">Uploaded Files</span>
-              <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
-                style={{ background: "rgba(21,101,192,0.15)", color: "#42A5F5" }}>{files.length}</span>
-            </div>
-            <button onClick={onClear} className="text-xs flex items-center gap-1"
-              style={{ color: "#7A9CB8" }}>
-              <X size={11} /> Clear
-            </button>
+    <div className="mt-10">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2.5">
+          <HardDriveUpload size={15} style={{ color: "#42A5F5" }} />
+          <span className="text-white font-semibold text-sm">Uploaded Files</span>
+          <span className="text-xs font-mono px-2 py-0.5 rounded-full"
+            style={{ background: "rgba(21,101,192,0.15)", color: "#42A5F5" }}>{files.length}</span>
+        </div>
+        <button onClick={onClear} className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+          style={{ color: "#7A9CB8" }}>
+          <X size={11} /> Clear all
+        </button>
+      </div>
+
+      {/* Latest upload — highlighted */}
+      <div className="rounded-2xl p-4 mb-3 flex items-center gap-4"
+        style={{ background: "rgba(21,101,192,0.1)", border: "1px solid rgba(21,101,192,0.3)" }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(21,101,192,0.2)", border: "1px solid rgba(21,101,192,0.3)" }}>
+          {getIcon(latest.name)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <p className="text-sm font-mono font-semibold text-white truncate">{latest.name}</p>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+              style={{ background: "rgba(16,185,129,0.15)", color: "#34d399" }}>LATEST</span>
           </div>
-          <div className="max-h-48 overflow-y-auto">
-            {files.map((f) => (
-              <div key={f.id} className="flex items-center gap-3 px-4 py-2.5"
-                style={{ borderBottom: "1px solid rgba(26,48,80,0.5)" }}>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(21,101,192,0.1)", border: "1px solid rgba(21,101,192,0.15)" }}>
-                  {getIcon(f.name)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-mono text-white truncate">{f.name}</p>
-                  <p className="text-[11px]" style={{ color: "#7A9CB8" }}>{formatBytes(f.size)} · {f.savedAt}</p>
-                </div>
-                <CheckCircle2 size={12} className="text-emerald-400 flex-shrink-0" />
+          <p className="text-xs" style={{ color: "#7A9CB8" }}>
+            {formatBytes(latest.size)} · Saved at {latest.savedAt} · <span className="font-mono">{SAVE_DIR}</span>
+          </p>
+        </div>
+        <CheckCircle2 size={18} className="text-emerald-400 flex-shrink-0" />
+      </div>
+
+      {/* All previous files */}
+      {rest.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #1A3050" }}>
+          {rest.map((f, i) => (
+            <div key={f.id} className="flex items-center gap-3 px-4 py-3"
+              style={{ borderBottom: i < rest.length - 1 ? "1px solid #1A3050" : undefined, background: "#0E2337" }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "#142840", border: "1px solid #1A3050" }}>
+                {getIcon(f.name)}
               </div>
-            ))}
-          </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-mono text-white truncate">{f.name}</p>
+                <p className="text-[11px] mt-0.5" style={{ color: "#7A9CB8" }}>{formatBytes(f.size)} · {f.savedAt}</p>
+              </div>
+              <CheckCircle2 size={13} className="text-emerald-400 flex-shrink-0" />
+            </div>
+          ))}
         </div>
       )}
-      <button onClick={() => setOpen(!open)}
-        className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-white text-sm font-semibold shadow-xl transition-all hover:brightness-110"
-        style={{ background: "#1565C0", boxShadow: "0 4px 24px rgba(21,101,192,0.4)" }}>
-        <CheckCircle2 size={15} className="text-emerald-300" />
-        {files.length} file{files.length > 1 ? "s" : ""} saved
-      </button>
     </div>
   );
 }
 
+const SAVE_DIR = "C:\\scan";
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function HomePage() {
-  const [dirHandle,    setDirHandle]    = useState<FileSystemDirectoryHandle | null>(null);
-  const [dirName,      setDirName]      = useState("");
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState("");
   const [savedFiles,   setSavedFiles]   = useState<SavedFile[]>([]);
@@ -167,33 +181,18 @@ export default function HomePage() {
   const inputRef   = useRef<HTMLInputElement>(null);
   const counterRef = useRef(0);
 
-  const pickFolder = async () => {
-    try {
-      const handle = await (window as any).showDirectoryPicker({ mode: "readwrite" });
-      setDirHandle(handle);
-      setDirName(handle.name);
-      setError("");
-      return handle as FileSystemDirectoryHandle;
-    } catch (e: any) {
-      if (e.name !== "AbortError") setError("Could not open folder: " + e.message);
-      return null;
-    }
-  };
-
-  const saveFilesToFolder = useCallback(async (files: File[], handle?: FileSystemDirectoryHandle) => {
-    const h = handle ?? dirHandle;
-    if (!h) return;
+  const saveFilesToFolder = useCallback(async (files: File[]) => {
     setSaving(true);
     setError("");
     for (const file of files) {
       try {
-        const safeName = file.name.replace(/[^a-zA-Z0-9._\-]/g, "_");
-        const fh       = await h.getFileHandle(safeName, { create: true });
-        const writable = await (fh as any).createWritable();
-        await writable.write(file);
-        await writable.close();
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Upload failed");
         setSavedFiles((prev) => [{
-          id: ++counterRef.current, name: safeName, size: file.size,
+          id: ++counterRef.current, name: data.originalName, size: file.size,
           savedAt: new Date().toLocaleTimeString(),
         }, ...prev]);
       } catch (e: any) {
@@ -201,14 +200,10 @@ export default function HomePage() {
       }
     }
     setSaving(false);
-  }, [dirHandle]);
+  }, []);
 
   // "Submit File" card clicked
-  const handleSubmitFile = async () => {
-    if (!dirHandle) {
-      const h = await pickFolder();
-      if (!h) return;
-    }
+  const handleSubmitFile = () => {
     inputRef.current?.click();
   };
 
@@ -229,8 +224,7 @@ export default function HomePage() {
       {/* Sidebar */}
       <Sidebar
         onNewScan={() => setShowNewScan(true)}
-        dirName={dirName}
-        onPickFolder={pickFolder}
+        dirName={SAVE_DIR}
       />
 
       {/* Main */}
@@ -240,10 +234,10 @@ export default function HomePage() {
         {showNewScan && (
           <NewScanModal onClose={() => setShowNewScan(false)} onComplete={onScanComplete} />
         )}
-        {pendingFiles.length > 0 && dirName && (
+        {pendingFiles.length > 0 && (
           <ConfirmModal
             files={pendingFiles}
-            dirName={dirName}
+            dirName={SAVE_DIR}
             onConfirm={async () => { const f = pendingFiles; setPendingFiles([]); await saveFilesToFolder(f); }}
             onCancel={() => setPendingFiles([])}
           />
@@ -264,9 +258,17 @@ export default function HomePage() {
 
               {/* ── Header ── */}
               <h1 className="text-white font-bold text-3xl leading-tight mb-1">Start your analysis</h1>
-              <p className="text-sm mb-10" style={{ color: "#7A9CB8" }}>
+              <p className="text-sm mb-5" style={{ color: "#7A9CB8" }}>
                 Interact with cyber threats inside Windows, Linux, macOS, and Android VMs to trigger full attack execution.
               </p>
+
+              {/* ── Save location banner ── */}
+              <div className="flex items-center gap-3 mb-8 px-4 py-3 rounded-xl w-fit"
+                style={{ background: "rgba(21,101,192,0.08)", border: "1px solid rgba(21,101,192,0.25)" }}>
+                <Folder size={15} style={{ color: "#42A5F5", flexShrink: 0 }} />
+                <span className="text-sm" style={{ color: "#7A9CB8" }}>Files will be saved to</span>
+                <span className="text-sm font-mono font-semibold" style={{ color: "#42A5F5" }}>{SAVE_DIR}</span>
+              </div>
 
               {/* ── Deep analysis section ── */}
               <p className="text-white font-semibold text-sm mb-4">Deep interactive investigation in full environment</p>
@@ -286,9 +288,7 @@ export default function HomePage() {
                   <div>
                     <p className="text-white font-bold text-lg leading-tight">Submit File / Email</p>
                     <p className="text-sm mt-1.5 leading-relaxed" style={{ color: "#7A9CB8" }}>
-                      {dirName
-                        ? <>Save to <span className="font-mono" style={{ color: "#42A5F5" }}>{dirName}</span></>
-                        : "Detonate an object to observe its malicious activity"}
+                      Save to <span className="font-mono" style={{ color: "#42A5F5" }}>{SAVE_DIR}</span>
                     </p>
                   </div>
                   {saving && (
@@ -380,6 +380,8 @@ export default function HomePage() {
                   <AlertTriangle size={14} className="flex-shrink-0" />{error}
                 </div>
               )}
+
+              <UploadedFilesPanel files={savedFiles} onClear={() => setSavedFiles([])} />
             </div>
 
             {/* Status bar */}
@@ -398,8 +400,6 @@ export default function HomePage() {
         <input ref={inputRef} type="file" accept="*" multiple className="hidden" onChange={onInputChange} />
       </div>
 
-      {/* Saved files badge */}
-      <SavedBadge files={savedFiles} onClear={() => setSavedFiles([])} />
     </div>
   );
 }
