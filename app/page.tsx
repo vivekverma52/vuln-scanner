@@ -35,7 +35,7 @@ const FILE_ICONS: Record<string, React.ReactNode> = {
 function getExt(n: string) { return n.includes(".") ? "." + n.split(".").pop()!.toLowerCase() : ""; }
 function getIcon(n: string) { return FILE_ICONS[getExt(n)] ?? <FileText size={14} style={{ color: "#7A9CB8" }} />; }
 
-interface SavedFile { id: number; name: string; size: number; savedAt: string; }
+interface SavedFile { id: number; name: string; size: number; savedAt: string; savedPath: string; }
 
 // ── Confirm Modal ─────────────────────────────────────────────────────────────
 function ConfirmModal({ files, dirName, onConfirm, onCancel }: {
@@ -105,7 +105,7 @@ function ConfirmModal({ files, dirName, onConfirm, onCancel }: {
 }
 
 // ── Uploaded Files Panel ──────────────────────────────────────────────────────
-function UploadedFilesPanel({ files, onClear }: { files: SavedFile[]; onClear: () => void }) {
+function UploadedFilesPanel({ files, uploadDir, onClear }: { files: SavedFile[]; uploadDir: string; onClear: () => void }) {
   if (files.length === 0) return null;
   const latest = files[0];
   const rest   = files.slice(1);
@@ -139,7 +139,7 @@ function UploadedFilesPanel({ files, onClear }: { files: SavedFile[]; onClear: (
               style={{ background: "rgba(16,185,129,0.15)", color: "#34d399" }}>LATEST</span>
           </div>
           <p className="text-xs" style={{ color: "#7A9CB8" }}>
-            {formatBytes(latest.size)} · Saved at {latest.savedAt} · <span className="font-mono">{SAVE_DIR}</span>
+            {formatBytes(latest.size)} · Saved at {latest.savedAt} · <span className="font-mono">{uploadDir || latest.savedPath}</span>
           </p>
         </div>
         <CheckCircle2 size={18} className="text-emerald-400 flex-shrink-0" />
@@ -168,13 +168,12 @@ function UploadedFilesPanel({ files, onClear }: { files: SavedFile[]; onClear: (
   );
 }
 
-const SAVE_DIR = "C:\\scan";
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState("");
   const [savedFiles,   setSavedFiles]   = useState<SavedFile[]>([]);
+  const [uploadDir,    setUploadDir]    = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [showNewScan,  setShowNewScan]  = useState(false);
   const [scanResult,   setScanResult]   = useState<ScanResult | null>(null);
@@ -191,9 +190,10 @@ export default function HomePage() {
         const res = await fetch("/api/upload", { method: "POST", body: formData });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Upload failed");
+        if (data.uploadDir) setUploadDir(data.uploadDir);
         setSavedFiles((prev) => [{
           id: ++counterRef.current, name: data.originalName, size: file.size,
-          savedAt: new Date().toLocaleTimeString(),
+          savedAt: new Date().toLocaleTimeString(), savedPath: data.savedPath,
         }, ...prev]);
       } catch (e: any) {
         setError(`Failed to save "${file.name}": ${e.message}`);
@@ -224,7 +224,7 @@ export default function HomePage() {
       {/* Sidebar */}
       <Sidebar
         onNewScan={() => setShowNewScan(true)}
-        dirName={SAVE_DIR}
+        dirName={uploadDir || "Server storage"}
       />
 
       {/* Main */}
@@ -237,7 +237,7 @@ export default function HomePage() {
         {pendingFiles.length > 0 && (
           <ConfirmModal
             files={pendingFiles}
-            dirName={SAVE_DIR}
+            dirName={uploadDir || "Server storage"}
             onConfirm={async () => { const f = pendingFiles; setPendingFiles([]); await saveFilesToFolder(f); }}
             onCancel={() => setPendingFiles([])}
           />
@@ -267,7 +267,7 @@ export default function HomePage() {
                 style={{ background: "rgba(21,101,192,0.08)", border: "1px solid rgba(21,101,192,0.25)" }}>
                 <Folder size={15} style={{ color: "#42A5F5", flexShrink: 0 }} />
                 <span className="text-sm" style={{ color: "#7A9CB8" }}>Files will be saved to</span>
-                <span className="text-sm font-mono font-semibold" style={{ color: "#42A5F5" }}>{SAVE_DIR}</span>
+                <span className="text-sm font-mono font-semibold" style={{ color: "#42A5F5" }}>{uploadDir || "Server storage"}</span>
               </div>
 
               {/* ── Deep analysis section ── */}
@@ -288,7 +288,7 @@ export default function HomePage() {
                   <div>
                     <p className="text-white font-bold text-lg leading-tight">Submit File / Email</p>
                     <p className="text-sm mt-1.5 leading-relaxed" style={{ color: "#7A9CB8" }}>
-                      Save to <span className="font-mono" style={{ color: "#42A5F5" }}>{SAVE_DIR}</span>
+                      Save to <span className="font-mono" style={{ color: "#42A5F5" }}>{uploadDir || "Server storage"}</span>
                     </p>
                   </div>
                   {saving && (
@@ -381,7 +381,7 @@ export default function HomePage() {
                 </div>
               )}
 
-              <UploadedFilesPanel files={savedFiles} onClear={() => setSavedFiles([])} />
+              <UploadedFilesPanel files={savedFiles} uploadDir={uploadDir} onClear={() => setSavedFiles([])} />
             </div>
 
             {/* Status bar */}

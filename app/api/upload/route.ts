@@ -3,7 +3,9 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
 
-const UPLOAD_DIR = "C:\\scan";
+const UPLOAD_DIR =
+  process.env.UPLOAD_DIR ||
+  (process.platform === "win32" ? "C:\\scan" : "/tmp/scan");
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -33,7 +35,14 @@ export async function POST(request: NextRequest) {
 
     // Ensure upload directory exists
     if (!existsSync(UPLOAD_DIR)) {
-      await mkdir(UPLOAD_DIR, { recursive: true });
+      try {
+        await mkdir(UPLOAD_DIR, { recursive: true });
+      } catch (mkdirErr: any) {
+        return NextResponse.json(
+          { error: `Cannot create ${UPLOAD_DIR} — please create the folder manually or run the server as Administrator. (${mkdirErr.code})` },
+          { status: 500 }
+        );
+      }
     }
 
     // Safe filename: strip path traversal chars
